@@ -3,7 +3,7 @@ from langchain_groq import ChatGroq
 
 def host_node(state):
     history = state["messages"]
-    lang = state.get("language", "french") # "french" par défaut par sécurité
+    lang = state.get("language", "english") # "english" par défaut par sécurité
     
     llm = ChatGroq(model="llama-3.3-70b-versatile", temperature=0.7)
     
@@ -34,7 +34,7 @@ def host_node(state):
     prompt = base_prompt + lang_instructions[lang]
     response = llm.invoke(prompt)
     
-    # Correction importante pour LangGraph + operator.add : on renvoie juste la nouveauté dans une liste
+    
     return {
         "messages": [{"role": "assistant", "content": str(response.content)}],
         "question_count": state["question_count"] + 1

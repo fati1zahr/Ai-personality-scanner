@@ -4,12 +4,12 @@ from graph_logic import create_graph
 
 st.set_page_config(page_title="AI Personality Scanner", page_icon="🎭", layout="centered")
 
-# --- NOVEAUTÉ : BARRE LATÉRALE POUR LE CHOIX DE LA LANGUE ---
+#  BARRE LATÉRALE POUR LE CHOIX DE LA LANGUE 
 st.sidebar.title("Configuration 🌐")
 langue_choisie = st.sidebar.radio(
     "Choisissez votre langue / Select Language / اختر لغتك :",
     options=["Français 🇫🇷", "English 🇬🇧", "العربية 🇲🇦"],
-    index=0  # Français par défaut
+    index=1  # Anglais par défaut
 )
 
 lang_map = {
@@ -54,7 +54,7 @@ if "compiled_graph" not in st.session_state:
 graph = st.session_state.compiled_graph
 state = st.session_state.graph_state
 
-# Si c'est le tout premier lancement, on injecte la langue choisie
+# Si c'est le tout premier lancement
 if len(state["messages"]) == 0:
     with st.spinner("Summoning The Host..."):
         updated_state = graph.invoke({
@@ -101,7 +101,7 @@ else:
     scores = state["expert_scores"]
     categories = ['Comical 🎭', 'Serious 📐', 'Sensitive ❤️', 'Hardworker 🔥']
     
-    # On va chercher le score .score dans tes objets Pydantic de l'état
+    # le score 
     user_scores = [
         scores['comical'].score if hasattr(scores['comical'], 'score') else scores['comical'].get('score', 5),
         scores['serious'].score if hasattr(scores['serious'], 'score') else scores['serious'].get('score', 5),

@@ -14,7 +14,7 @@ def merge_scores(current: dict, update: dict) -> dict:
         return update
     return {**current, **update}
 
-# --- MIS À JOUR : AJOUT DE LANGUAGE ---
+# MIS À JOUR : AJOUT DE LANGUAGE 
 class ProjectState(TypedDict):
     messages: Annotated[List[Dict[str, str]], operator.add]
     question_count: int                                    
