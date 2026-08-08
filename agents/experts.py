@@ -16,7 +16,7 @@ lang_guidance = {
 def expert_comical_node(state):
     lang = state.get("language", "french")
     llm = ChatGroq(model="llama-3.3-70b-versatile", temperature=0.7)
-    structured_llm = llm.with_structured_output(AgentScore)
+    structured_llm = llm.with_structured_output(AgentScore,method="json_mode")
     
     prompt = f"You are the 'Comical Expert'. Rate how funny/sarcastic the user is (1-10).\n{lang_guidance[lang]}\n\nChat: {str(state['messages'])}"
     return {"expert_scores": {"comical": structured_llm.invoke(prompt)}}
@@ -24,7 +24,7 @@ def expert_comical_node(state):
 def expert_serious_node(state):
     lang = state.get("language", "french")
     llm = ChatGroq(model="llama-3.3-70b-versatile", temperature=0.7)
-    structured_llm = llm.with_structured_output(AgentScore)
+    structured_llm = llm.with_structured_output(AgentScore,method="json_mode")
     
     prompt = f"You are the 'Serious Expert'. Rate how logical/serious the user is (1-10).\n{lang_guidance[lang]}\n\nChat: {str(state['messages'])}"
     return {"expert_scores": {"serious": structured_llm.invoke(prompt)}}
@@ -32,7 +32,7 @@ def expert_serious_node(state):
 def expert_sensitive_node(state):
     lang = state.get("language", "french")
     llm = ChatGroq(model="llama-3.3-70b-versatile", temperature=0.7)
-    structured_llm = llm.with_structured_output(AgentScore)
+    structured_llm = llm.with_structured_output(AgentScore,method="json_mode")
     
     prompt = f"You are the 'Sensitive Expert'. Rate the user's emotional intelligence (1-10).\n{lang_guidance[lang]}\n\nChat: {str(state['messages'])}"
     return {"expert_scores": {"sensitive": structured_llm.invoke(prompt)}}
@@ -40,7 +40,7 @@ def expert_sensitive_node(state):
 def expert_hardworker_node(state):
     lang = state.get("language", "french")
     llm = ChatGroq(model="llama-3.3-70b-versatile", temperature=0.7)
-    structured_llm = llm.with_structured_output(AgentScore)
+    structured_llm = llm.with_structured_output(AgentScore,method="json_mode")
     
     prompt = f"You are the 'Hardworker Expert'. Rate the user's hustle mindset (1-10).\n{lang_guidance[lang]}\n\nChat: {str(state['messages'])}"
     return {"expert_scores": {"hardworker": structured_llm.invoke(prompt)}}
