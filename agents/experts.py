@@ -32,7 +32,7 @@ def format_messages(messages):
 def expert_comical_node(state):
     lang = state.get("language", "french")
     llm = ChatGroq(model="llama-3.3-70b-versatile", temperature=0.7)
-    structured_llm = llm.with_structured_output(AgentScore, method="json_mode")
+    structured_llm = llm.with_structured_output(AgentScore)
     
     chat_history = format_messages(state["messages"])
     prompt = f"""You are the 'Comical Expert'. Rate how funny/sarcastic the user is (1-10).
@@ -48,7 +48,7 @@ Respond STRICTLY in JSON format with the required schema.
 def expert_serious_node(state):
     lang = state.get("language", "french")
     llm = ChatGroq(model="llama-3.3-70b-versatile", temperature=0.7)
-    structured_llm = llm.with_structured_output(AgentScore, method="json_mode")
+    structured_llm = llm.with_structured_output(AgentScore)
     
     chat_history = format_messages(state["messages"])
     prompt = f"""You are the 'Serious Expert'. Rate how logical/serious the user is (1-10).
@@ -64,7 +64,7 @@ Respond STRICTLY in JSON format with the required schema.
 def expert_sensitive_node(state):
     lang = state.get("language", "french")
     llm = ChatGroq(model="llama-3.3-70b-versatile", temperature=0.7)
-    structured_llm = llm.with_structured_output(AgentScore, method="json_mode")
+    structured_llm = llm.with_structured_output(AgentScore)
     
     chat_history = format_messages(state["messages"])
     prompt = f"""You are the 'Sensitive Expert'. Rate the user's emotional intelligence (1-10).
@@ -80,7 +80,7 @@ Respond STRICTLY in JSON format with the required schema.
 def expert_hardworker_node(state):
     lang = state.get("language", "french")
     llm = ChatGroq(model="llama-3.3-70b-versatile", temperature=0.7)
-    structured_llm = llm.with_structured_output(AgentScore, method="json_mode")
+    structured_llm = llm.with_structured_output(AgentScore)
     
     chat_history = format_messages(state["messages"])
     prompt = f"""You are the 'Hardworker Expert'. Rate the user's hustle mindset (1-10).
