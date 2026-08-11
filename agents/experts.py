@@ -1,5 +1,6 @@
 from pydantic import BaseModel, Field
 from langchain_groq import ChatGroq
+from langchain_core.messages import HumanMessage, AIMessage
 
 class AgentScore(BaseModel):
     score: int = Field(description="Rating from 1 to 10 on how much the user fits this trait.")
@@ -42,5 +43,17 @@ def expert_hardworker_node(state):
     llm = ChatGroq(model="llama-3.3-70b-versatile", temperature=0.7)
     structured_llm = llm.with_structured_output(AgentScore,method="json_mode")
     
-    prompt = f"You are the 'Hardworker Expert'. Rate the user's hustle mindset (1-10).\n{lang_guidance[lang]}\n\nChat: {str(state['messages'])}"
+   # 1. On formate les messages proprement en texte simple
+    chat_history = "\n".join([f"{m.type}: {m.content}" for m in state["messages"]])
+
+# 2. On ajoute l'instruction JSON explicite exigée par Groq
+    prompt = f"""You are the 'Hardworker Expert'. Rate the user's hustle mindset (1-10).
+{lang_guidance[lang]}
+
+Chat history:
+{chat_history}
+
+Respond STRICTLY in JSON format with the required schema.
+"""
+
     return {"expert_scores": {"hardworker": structured_llm.invoke(prompt)}}
