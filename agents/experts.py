@@ -31,7 +31,7 @@ def format_messages(messages):
 
 def expert_comical_node(state):
     lang = state.get("language", "french")
-    llm = ChatGroq(model="llama-3.3-70b-versatile", temperature=0.7)
+    llm = ChatGroq(model="llama-3.1-8b-instant", temperature=0.7)
     structured_llm = llm.with_structured_output(AgentScore)
     
     chat_history = format_messages(state["messages"])
@@ -47,7 +47,7 @@ Respond STRICTLY in JSON format with the required schema.
 
 def expert_serious_node(state):
     lang = state.get("language", "french")
-    llm = ChatGroq(model="llama-3.3-70b-versatile", temperature=0.7)
+    llm = ChatGroq(model="llama-3.1-8b-instant", temperature=0.7)
     structured_llm = llm.with_structured_output(AgentScore)
     
     chat_history = format_messages(state["messages"])
@@ -63,7 +63,7 @@ Respond STRICTLY in JSON format with the required schema.
 
 def expert_sensitive_node(state):
     lang = state.get("language", "french")
-    llm = ChatGroq(model="llama-3.3-70b-versatile", temperature=0.7)
+    llm = ChatGroq(model="llama-3.1-8b-instant", temperature=0.7)
     structured_llm = llm.with_structured_output(AgentScore)
     
     chat_history = format_messages(state["messages"])
@@ -79,7 +79,7 @@ Respond STRICTLY in JSON format with the required schema.
 
 def expert_hardworker_node(state):
     lang = state.get("language", "french")
-    llm = ChatGroq(model="llama-3.3-70b-versatile", temperature=0.7)
+    llm = ChatGroq(model="llama-3.1-8b-instant", temperature=0.7)
     structured_llm = llm.with_structured_output(AgentScore)
     
     chat_history = format_messages(state["messages"])

@@ -5,7 +5,7 @@ def host_node(state):
     history = state["messages"]
     lang = state.get("language", "english") # "english" par défaut par sécurité
     
-    llm = ChatGroq(model="llama-3.3-70b-versatile", temperature=0.7)
+    llm = ChatGroq(model="llama-3.1-8b-instant", temperature=0.7)
     
     transcript = ""
     for msg in history:

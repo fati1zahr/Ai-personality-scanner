@@ -2,7 +2,7 @@ from langchain_groq import ChatGroq
 
 def synthesizer_node(state):
     lang = state.get("language", "french")
-    llm = ChatGroq(model="llama-3.3-70b-versatile", temperature=0.7)
+    llm = ChatGroq(model="llama-3.1-8b-instant", temperature=0.7)
     scores = state["expert_scores"]
     
     # Traduction du titre de l'archetype selon la langue
