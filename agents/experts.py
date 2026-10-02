@@ -1,79 +1,105 @@
 import os
 import streamlit as st
-from pydantic import BaseModel, Field
+from dotenv import load_dotenv
 from langchain_groq import ChatGroq
+from pydantic import SecretStr
 
-class AgentScore(BaseModel):
-    score: int = Field(description="Rating from 1 to 10 on how much the user fits this trait.")
-    justification: str = Field(description="A witty, sharp, and slightly roasting explanation of the score.")
-    key_quote: str = Field(description="The exact quote from the user that triggered this analysis.")
-
-lang_guidance = {
-    "french": "Write your 'justification' and analysis strictly in FRENCH.",
-    "english": "Write your 'justification' and analysis strictly in ENGLISH.",
-    "arabic": "Write your 'justification' and analysis strictly in ARABIC."
-}
+load_dotenv()
 
 def get_expert_llm():
-    """Récupère la clé API Groq depuis Streamlit Secrets ou l'environnement."""
-    api_key = st.secrets.get("GROQ_API_KEY") or os.environ.get("GROQ_API_KEY")
+    """Récupère proprement la clé API Groq et initialise le modèle ChatGroq."""
+    api_key = None
+    
+    if hasattr(st, "secrets") and "GROQ_API_KEY" in st.secrets:
+        api_key = st.secrets["GROQ_API_KEY"]
+    else:
+        api_key = os.environ.get("GROQ_API_KEY")
+
+    if not api_key:
+        raise ValueError(
+            "GROQ_API_KEY est introuvable ! "
+            "Vérifiez vos secrets Streamlit Cloud ou votre fichier .env local."
+        )
+
+    clean_api_key = str(api_key).strip()
+    os.environ["GROQ_API_KEY"] = clean_api_key
+
     return ChatGroq(
         model="llama-3.1-8b-instant",
         temperature=0.7,
-        groq_api_key=api_key # type: ignore
+        api_key=SecretStr(clean_api_key)
     )
 
-def format_messages(messages):
-    """Safely format messages whether they are tuples, dicts, or LangChain objects."""
-    formatted = []
-    for m in messages:
-        if isinstance(m, (tuple, list)):
-            role, content = m[0], m[1]
-        elif isinstance(m, dict):
-            role = m.get("role", m.get("type", "user"))
-            content = m.get("content", "")
-        else:
-            role = getattr(m, "type", getattr(m, "role", "user"))
-            content = getattr(m, "content", str(m))
-        formatted.append(f"{role}: {content}")
-    return "\n".join(formatted)
-
-def run_expert_node(state, expert_role, trait_key, description_prompt):
-    """Fonction générique pour exécuter n'importe quel expert de manière sécurisée."""
-    lang = state.get("language", "french")
+def expert_node(state, persona_name: str, persona_prompt: str):
+    """Nœud générique pour exécuter l'analyse d'un expert spécifique."""
+    history = state.get("messages", [])
+    lang = state.get("language", "english")
+    
     llm = get_expert_llm()
     
-    # Forcer json_mode pour une meilleure compatibilité Groq + Pydantic
-    structured_llm = llm.with_structured_output(AgentScore, method="json_mode")
+    transcript = ""
+    for msg in history:
+        if isinstance(msg, dict):
+            role_str = msg.get("role", "user")
+            content_str = msg.get("content", "")
+        else:
+            role_str = getattr(msg, "type", "user")
+            content_str = getattr(msg, "content", "")
+            
+        role = "User" if role_str in ["user", "human"] else "Host"
+        transcript += f"{role}: {content_str}\n"
+
+    system_instruction = (
+        f"You are {persona_name}. {persona_prompt}\n\n"
+        f"Here is the interview transcript between the Host and the User:\n{transcript}\n"
+        "Analyze the user's responses based on your domain expertise and give your feedback/insights."
+    )
+
+    lang_instructions = {
+        "french": "\nCRITICAL INSTRUCTION: You must write your entire analysis and response in FRENCH.",
+        "english": "\nCRITICAL INSTRUCTION: You must write your entire analysis and response in ENGLISH.",
+        "arabic": "\nCRITICAL INSTRUCTION: You must write your entire analysis and response in ARABIC (Modern Standard Arabic)."
+    }
     
-    chat_history = format_messages(state.get("messages", []))
-    guidance = lang_guidance.get(lang, lang_guidance["french"])
-    
-    prompt = f"""You are the '{expert_role}'. {description_prompt}
-{guidance}
+    lang_instruction = lang_instructions.get(lang, lang_instructions["english"])
+    prompt = system_instruction + lang_instruction
 
-Chat history:
-{chat_history}
+    response = llm.invoke(prompt)
 
-Respond STRICTLY in JSON format matching this schema:
-{{
-  "score": int,
-  "justification": "string",
-  "key_quote": "string"
-}}
-"""
-    result = structured_llm.invoke(prompt)
-    return {"expert_scores": {trait_key: result}}
+    return {
+        "expert_reviews": {
+            persona_name: str(response.content)
+        }
+    }
 
-# Nœuds du graphe
+# -------------------------------------------------------------------
+# FONCTIONS NŒUDS EXPORTÉES POUR GRAPH_LOGIC.PY
+# -------------------------------------------------------------------
+
 def expert_comical_node(state):
-    return run_expert_node(state, "Comical Expert", "comical", "Rate how funny/sarcastic the user is (1-10).")
+    return expert_node(
+        state, 
+        persona_name="comical", 
+        persona_prompt="You are witty, sarcastic, humorous, and look for comedy in everything."
+    )
 
 def expert_serious_node(state):
-    return run_expert_node(state, "Serious Expert", "serious", "Rate how logical/serious the user is (1-10).")
+    return expert_node(
+        state, 
+        persona_name="serious", 
+        persona_prompt="You are analytical, structured, logical, and focused strictly on facts."
+    )
 
 def expert_sensitive_node(state):
-    return run_expert_node(state, "Sensitive Expert", "sensitive", "Rate the user's emotional intelligence (1-10).")
+    return expert_node(
+        state, 
+        persona_name="sensitive", 
+        persona_prompt="You are empathetic, emotional, supportive, and focus on human feelings."
+    )
 
 def expert_hardworker_node(state):
-    return run_expert_node(state, "Hardworker Expert", "hardworker", "Rate the user's hustle mindset (1-10).")
+    return expert_node(
+        state, 
+        persona_name="hardworker", 
+        persona_prompt="You are goal-oriented, ambitious, disciplined, and focused on productivity."
+    )

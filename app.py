@@ -4,7 +4,7 @@ from graph_logic import create_graph
 
 st.set_page_config(page_title="AI Personality Scanner", page_icon="🎭", layout="centered")
 
-#  BARRE LATÉRALE POUR LE CHOIX DE LA LANGUE 
+# BARRE LATÉRALE POUR LE CHOIX DE LA LANGUE
 st.sidebar.title("Configuration 🌐")
 langue_choisie = st.sidebar.radio(
     "Choisissez votre langue / Select Language / اختر لغتك :",
@@ -30,7 +30,7 @@ if "graph_state" not in st.session_state:
         "question_count": 0,
         "expert_scores": {},
         "final_portrait": "",
-        "language": current_lang  # Intégration dans l'état initial
+        "language": current_lang
     }
 
 # Détection du changement de langue en cours de session -> Reset automatique
@@ -54,7 +54,7 @@ if "compiled_graph" not in st.session_state:
 graph = st.session_state.compiled_graph
 state = st.session_state.graph_state
 
-# Si c'est le tout premier lancement
+# Premier lancement
 if len(state["messages"]) == 0:
     with st.spinner("Summoning The Host..."):
         updated_state = graph.invoke({
@@ -85,7 +85,7 @@ if state["question_count"] <= 4:
             st.write(user_input)
         
         state["messages"].append({"role": "user", "content": user_input})
-        state["language"] = current_lang  # On s'assure que la langue suit toujours
+        state["language"] = current_lang
         
         with st.spinner("The Host is thinking..."):
             updated_state = graph.invoke(state)
@@ -98,15 +98,24 @@ else:
     st.success("🎉 The interview is over! The Council of Sages has deliberated.")
     
     st.subheader("📊 Your Personality Metrics")
-    scores = state["expert_scores"]
+    scores = state.get("expert_scores", {})
     categories = ['Comical 🎭', 'Serious 📐', 'Sensitive ❤️', 'Hardworker 🔥']
     
-    # le score 
+    def extract_score(expert_key):
+        item = scores.get(expert_key, 5)
+        if hasattr(item, 'score'):
+            return getattr(item, 'score', 5)
+        elif isinstance(item, dict):
+            return item.get('score', 5)
+        elif isinstance(item, (int, float)):
+            return item
+        return 5
+
     user_scores = [
-        scores['comical'].score if hasattr(scores['comical'], 'score') else scores['comical'].get('score', 5),
-        scores['serious'].score if hasattr(scores['serious'], 'score') else scores['serious'].get('score', 5),
-        scores['sensitive'].score if hasattr(scores['sensitive'], 'score') else scores['sensitive'].get('score', 5),
-        scores['hardworker'].score if hasattr(scores['hardworker'], 'score') else scores['hardworker'].get('score', 5)
+        extract_score('comical'),
+        extract_score('serious'),
+        extract_score('sensitive'),
+        extract_score('hardworker')
     ]
     
     categories.append(categories[0])
@@ -131,7 +140,7 @@ else:
     st.plotly_chart(fig, use_container_width=True)
     
     st.subheader("📜 The Ultimate Verdict")
-    st.markdown(state["final_portrait"])
+    st.markdown(state.get("final_portrait", ""))
     
     if st.button("Reset Test 🔄"):
         st.session_state.graph_state = {

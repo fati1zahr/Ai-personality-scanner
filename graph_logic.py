@@ -4,7 +4,12 @@ from langgraph.graph import StateGraph, END
 from dotenv import load_dotenv
 
 from agents.host import host_node
-from agents.experts import expert_comical_node, expert_serious_node, expert_sensitive_node, expert_hardworker_node
+from agents.experts import (
+    expert_comical_node, 
+    expert_serious_node, 
+    expert_sensitive_node, 
+    expert_hardworker_node
+)
 from agents.synthesizer import synthesizer_node
 
 load_dotenv()
@@ -14,7 +19,6 @@ def merge_scores(current: dict, update: dict) -> dict:
         return update
     return {**current, **update}
 
-# MIS À JOUR : AJOUT DE LANGUAGE 
 class ProjectState(TypedDict):
     messages: Annotated[List[Dict[str, str]], operator.add]
     question_count: int                                    
@@ -30,6 +34,7 @@ def routing_logic(state: ProjectState):
 def create_graph():
     workflow = StateGraph(ProjectState)
     
+    # Ajout des nœuds
     workflow.add_node("host", host_node)
     workflow.add_node("expert_comical", expert_comical_node)
     workflow.add_node("expert_serious", expert_serious_node)
@@ -37,14 +42,19 @@ def create_graph():
     workflow.add_node("expert_hardworker", expert_hardworker_node)
     workflow.add_node("synthesizer", synthesizer_node)
     
+    # Point d'entrée
     workflow.set_entry_point("host")
+    
+    # Condition de routage après le Host
     workflow.add_conditional_edges("host", routing_logic)
     
+    # Redirection des experts vers le Synthesizer
     workflow.add_edge("expert_comical", "synthesizer")
     workflow.add_edge("expert_serious", "synthesizer")
     workflow.add_edge("expert_sensitive", "synthesizer")
     workflow.add_edge("expert_hardworker", "synthesizer")
     
+    # Fin du flux
     workflow.add_edge("synthesizer", END)
     
     return workflow.compile()
