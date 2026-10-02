@@ -27,7 +27,7 @@ def get_synthesizer_llm():
     os.environ["GROQ_API_KEY"] = clean_api_key
 
     return ChatGroq(
-        model="mixtral-8x7b-32768",
+        model="openai/gpt-oss-120b",
         temperature=0.5,
         api_key=SecretStr(clean_api_key)
     )
