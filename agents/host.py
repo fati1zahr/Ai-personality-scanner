@@ -1,18 +1,36 @@
 import os
+import streamlit as st
 from langchain_groq import ChatGroq
 
+def get_host_llm():
+    """Récupère proprement la clé API Groq depuis Streamlit Secrets ou l'environnement."""
+    api_key = st.secrets.get("GROQ_API_KEY") or os.environ.get("GROQ_API_KEY")
+    return ChatGroq(
+        model="llama-3.1-8b-instant",
+        temperature=0.7,
+        groq_api_key=api_key # type: ignore
+    )
+
 def host_node(state):
-    history = state["messages"]
-    lang = state.get("language", "english") # "english" par défaut par sécurité
+    history = state.get("messages", [])
+    lang = state.get("language", "english")
     
-    llm = ChatGroq(model="llama-3.1-8b-instant", temperature=0.7)
+    llm = get_host_llm()
     
+    # Formatage sécurisé compatible dictionnaires ET objets LangChain (HumanMessage/AIMessage)
     transcript = ""
     for msg in history:
-        role = "User" if msg["role"] == "user" else "Host"
-        transcript += f"{role}: {msg['content']}\n"
+        if isinstance(msg, dict):
+            role_str = msg.get("role", "user")
+            content_str = msg.get("content", "")
+        else:
+            role_str = getattr(msg, "type", "user")
+            content_str = getattr(msg, "content", "")
+            
+        role = "User" if role_str in ["user", "human"] else "Host"
+        transcript += f"{role}: {content_str}\n"
     
-    # 1. Base du prompt en anglais
+    # 1. Base du prompt
     base_prompt = (
         "You are 'The Host', a witty, slightly sarcastic, and deeply observant AI interviewer. "
         "Your job is to ask the user 1 single open-ended, unexpected question to test their personality. "
@@ -31,11 +49,13 @@ def host_node(state):
         "arabic": "\nCRITICAL INSTRUCTION: You must output your entire response in ARABIC (Modern Standard Arabic). Keep it smooth, witty, and engaging."
     }
     
-    prompt = base_prompt + lang_instructions[lang]
-    response = llm.invoke(prompt)
+    # Récupération sécurisée du dictionnaire de langue avec fallback sur "english"
+    lang_instruction = lang_instructions.get(lang, lang_instructions["english"])
+    prompt = base_prompt + lang_instruction
     
+    response = llm.invoke(prompt)
     
     return {
         "messages": [{"role": "assistant", "content": str(response.content)}],
-        "question_count": state["question_count"] + 1
+        "question_count": state.get("question_count", 0) + 1
     }
