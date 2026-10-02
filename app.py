@@ -1,153 +1,157 @@
 import streamlit as st
-import plotly.graph_objects as go
-from graph_logic import create_graph
+import os
+from dotenv import load_dotenv
 
-st.set_page_config(page_title="AI Personality Scanner", page_icon="🎭", layout="centered")
+# Charger les variables d'environnement (.env local)
+load_dotenv()
 
-# BARRE LATÉRALE POUR LE CHOIX DE LA LANGUE
-st.sidebar.title("Configuration 🌐")
-langue_choisie = st.sidebar.radio(
-    "Choisissez votre langue / Select Language / اختر لغتك :",
-    options=["Français 🇫🇷", "English 🇬🇧", "العربية 🇲🇦"],
-    index=1  # Anglais par défaut
+# Import du graphe et éventuellement du type de State si défini dans graph_logic
+from graph_logic import create_graph, ProjectState
+
+# Configuration de la page Streamlit
+st.set_page_config(
+    page_title="AI Personality Scanner",
+    page_icon="🧠",
+    layout="wide"
 )
 
-lang_map = {
-    "Français 🇫🇷": "french",
-    "English 🇬🇧": "english",
-    "العربية 🇲🇦": "arabic"
-}
-current_lang = lang_map[langue_choisie]
+st.title("🧠 AI Personality Scanner")
+st.markdown(
+    "Répondez aux questions de l'**Host**. Après 4 questions, nos 4 experts analyseront vos réponses pour générer votre **portrait de personnalité final** !"
+)
 
-st.title("🎭 The Council of Sages")
-st.subheader("Who are you within the Matrix? Let's find out. (Just for fun)")
-st.divider()
+# -------------------------------------------------------------------
+# INITIALISATION DU GRAPH ET DE L'ÉTAT (SESSION STATE)
+# -------------------------------------------------------------------
 
-# INITIALISATION DE L'ÉTAT DE SESSION STREAMLIT
-if "graph_state" not in st.session_state:
-    st.session_state.graph_state = {
-        "messages": [],
-        "question_count": 0,
-        "expert_scores": {},
-        "final_portrait": "",
-        "language": current_lang
-    }
+@st.cache_resource
+def load_app_graph():
+    return create_graph()
 
-# Détection du changement de langue en cours de session -> Reset automatique
-if "current_language" not in st.session_state:
-    st.session_state.current_language = current_lang
+graph = load_app_graph()
 
-if st.session_state.current_language != current_lang:
-    st.session_state.current_language = current_lang
-    st.session_state.graph_state = {
-        "messages": [],
-        "question_count": 0,
-        "expert_scores": {},
-        "final_portrait": "",
-        "language": current_lang
-    }
-    st.rerun()
+# Initialisation des variables de session (corrigé)
+if "messages" not in st.session_state:
+    st.session_state.messages = []
+if "question_count" not in st.session_state:
+    st.session_state.question_count = 0
+if "expert_scores" not in st.session_state:
+    st.session_state.expert_scores = {}
+if "final_portrait" not in st.session_state:
+    st.session_state.final_portrait = None
+if "language" not in st.session_state:
+    st.session_state.language = "french"
 
-if "compiled_graph" not in st.session_state:
-    st.session_state.compiled_graph = create_graph()
+# -------------------------------------------------------------------
+# SIDEBAR : OPTIONS & RÉINITIALISATION
+# -------------------------------------------------------------------
 
-graph = st.session_state.compiled_graph
-state = st.session_state.graph_state
-
-# Premier lancement
-if len(state["messages"]) == 0:
-    with st.spinner("Summoning The Host..."):
-        updated_state = graph.invoke({
-            "messages": [], 
-            "question_count": 0, 
-            "expert_scores": {}, 
-            "final_portrait": "",
-            "language": current_lang
-        })
-        st.session_state.graph_state = updated_state
-        st.rerun()
-
-# AFFICHAGE DE L'HISTORIQUE DE LA DISCUSSION
-for msg in state["messages"]:
-    with st.chat_message(msg["role"]):
-        st.write(msg["content"])
-
-# INTERACTION UTILISATEUR (Jusqu'à 4 questions)
-if state["question_count"] <= 4:
-    placeholder_text = {
-        "french": "Tapez votre réponse ici...",
-        "english": "Type your answer here...",
-        "arabic": "اكتب إجابتك هنا..."
-    }
+with st.sidebar:
+    st.header("⚙ Paramètres")
     
-    if user_input := st.chat_input(placeholder_text[current_lang]):
-        with st.chat_message("user"):
-            st.write(user_input)
-        
-        state["messages"].append({"role": "user", "content": user_input})
-        state["language"] = current_lang
-        
-        with st.spinner("The Host is thinking..."):
-            updated_state = graph.invoke(state)
-            st.session_state.graph_state = updated_state
-        
-        st.rerun()
-
-# PHASE FINALE : AFFICHAGE DU VERDICT ET DU GRAPHIQUE RADAR
-else:
-    st.success("🎉 The interview is over! The Council of Sages has deliberated.")
-    
-    st.subheader("📊 Your Personality Metrics")
-    scores = state.get("expert_scores", {})
-    categories = ['Comical 🎭', 'Serious 📐', 'Sensitive ❤️', 'Hardworker 🔥']
-    
-    def extract_score(expert_key):
-        item = scores.get(expert_key, 5)
-        if hasattr(item, 'score'):
-            return getattr(item, 'score', 5)
-        elif isinstance(item, dict):
-            return item.get('score', 5)
-        elif isinstance(item, (int, float)):
-            return item
-        return 5
-
-    user_scores = [
-        extract_score('comical'),
-        extract_score('serious'),
-        extract_score('sensitive'),
-        extract_score('hardworker')
-    ]
-    
-    categories.append(categories[0])
-    user_scores.append(user_scores[0])
-    
-    fig = go.Figure()
-    fig.add_trace(go.Scatterpolar(
-        r=user_scores,
-        theta=categories,
-        fill='toself',
-        fillcolor='rgba(135, 206, 250, 0.3)',
-        line=dict(color='deepskyblue', width=2),
-        name='Your Profile'
-    ))
-    
-    fig.update_layout(
-        polar=dict(radialaxis=dict(visible=True, range=[0, 10])),
-        showlegend=False,
-        template="plotly_dark"
+    # Choix de la langue
+    selected_lang = st.selectbox(
+        "Langue de l'interview :",
+        options=["french", "english", "arabic"],
+        index=0,
+        format_func=lambda x: {"french": "🇫🇷 Français", "english": "🇬🇧 English", "arabic": "🇸🇦 العربية"}[x]
     )
+    st.session_state.language = selected_lang
+
+    st.markdown("---")
+    st.write(f"📊 **Questions posées :** {st.session_state.question_count}/4")
     
-    st.plotly_chart(fig, use_container_width=True)
-    
-    st.subheader("📜 The Ultimate Verdict")
-    st.markdown(state.get("final_portrait", ""))
-    
-    if st.button("Reset Test 🔄"):
-        st.session_state.graph_state = {
+    # Bouton de réinitialisation
+    if st.button("🔄 Recommencer l'interview", use_container_width=True):
+        st.session_state.messages = []
+        st.session_state.question_count = 0
+        st.session_state.expert_scores = {}
+        st.session_state.final_portrait = None
+        st.rerun()
+
+# -------------------------------------------------------------------
+# PREMIER LANCEMENT (Appel du Host pour la 1ère question)
+# -------------------------------------------------------------------
+
+if len(st.session_state.messages) == 0:
+    with st.spinner("Invocation de l'Host..."):
+        # Explicitly typed using ProjectState or cast
+        initial_state: ProjectState = {
             "messages": [],
             "question_count": 0,
             "expert_scores": {},
             "final_portrait": "",
-            "language": current_lang
+            "language": st.session_state.language
         }
+        output = graph.invoke(initial_state)
+        
+        st.session_state.messages = output.get("messages", [])
+        st.session_state.question_count = output.get("question_count", 1)
+
+# -------------------------------------------------------------------
+# AFFICHAGE DU CHAT / HISTORIQUE
+# -------------------------------------------------------------------
+
+for msg in st.session_state.messages:
+    if isinstance(msg, dict):
+        role = msg.get("role", "user")
+        content = msg.get("content", "")
+    else:
+        role = "user" if getattr(msg, "type", "") in ["user", "human"] else "assistant"
+        content = getattr(msg, "content", "")
+
+    avatar = "👤" if role == "user" else "🎙️"
+    with st.chat_message(role, avatar=avatar):
+        st.write(content)
+
+# -------------------------------------------------------------------
+# INTERACTION UTILISATEUR & EXÉCUTION DU GRAPH
+# -------------------------------------------------------------------
+
+# Si le portrait n'est pas encore généré, on laisse l'utilisateur répondre
+if not st.session_state.final_portrait:
+    user_input = st.chat_input("Saisissez votre réponse ici...")
+
+    if user_input:
+        # Ajout du message utilisateur
+        st.session_state.messages.append({"role": "user", "content": user_input})
+        
+        # Préparation de l'état avec le type explicite
+        current_state: ProjectState = {
+            "messages": st.session_state.messages,
+            "question_count": st.session_state.question_count,
+            "expert_scores": st.session_state.expert_scores,
+            "final_portrait": st.session_state.final_portrait or "",
+            "language": st.session_state.language
+        }
+
+        # Exécution du graphe
+        with st.spinner("Analyse de votre réponse par l'Host et les Experts..."):
+            updated_state = graph.invoke(current_state)
+
+        # Mise à jour de la session
+        st.session_state.messages = updated_state.get("messages", st.session_state.messages)
+        st.session_state.question_count = updated_state.get("question_count", st.session_state.question_count)
+        st.session_state.expert_scores = updated_state.get("expert_scores", st.session_state.expert_scores)
+        st.session_state.final_portrait = updated_state.get("final_portrait", None)
+
         st.rerun()
+
+# -------------------------------------------------------------------
+# AFFICHAGE DU PORTRAIT FINAL ET ANALYSES DES EXPERTS
+# -------------------------------------------------------------------
+
+if st.session_state.final_portrait:
+    st.markdown("---")
+    st.header("🎯 Votre Portrait de Personnalité Final")
+    st.success(st.session_state.final_portrait)
+
+    # Affichage optionnel des détails des experts
+    with st.expander("🔍 Voir les détails des analyses par Expert"):
+        scores = st.session_state.expert_scores
+        for expert_name, data in scores.items():
+            st.subheader(f"Expert : {expert_name.capitalize()}")
+            if isinstance(data, dict):
+                st.write(data.get("analysis", ""))
+            else:
+                st.write(str(data))

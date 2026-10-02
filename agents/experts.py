@@ -6,22 +6,24 @@ from pydantic import SecretStr
 
 load_dotenv()
 
-def get_expert_llm():
-    """Récupère proprement la clé API Groq et initialise le modèle ChatGroq."""
-    api_key = None
+def get_groq_api_key():
+    try:
+        if hasattr(st, "secrets") and "GROQ_API_KEY" in st.secrets:
+            return str(st.secrets["GROQ_API_KEY"]).strip()
+    except Exception:
+        pass
     
-    if hasattr(st, "secrets") and "GROQ_API_KEY" in st.secrets:
-        api_key = st.secrets["GROQ_API_KEY"]
-    else:
-        api_key = os.environ.get("GROQ_API_KEY")
+    api_key = os.getenv("GROQ_API_KEY")
+    if api_key:
+        return str(api_key).strip()
+        
+    raise ValueError(
+        "GROQ_API_KEY est introuvable ! "
+        "Ajoutez la clé dans Secrets sur Streamlit Cloud ou dans votre fichier .env local."
+    )
 
-    if not api_key:
-        raise ValueError(
-            "GROQ_API_KEY est introuvable ! "
-            "Vérifiez vos secrets Streamlit Cloud ou votre fichier .env local."
-        )
-
-    clean_api_key = str(api_key).strip()
+def get_expert_llm():
+    clean_api_key = get_groq_api_key()
     os.environ["GROQ_API_KEY"] = clean_api_key
 
     return ChatGroq(
@@ -31,7 +33,7 @@ def get_expert_llm():
     )
 
 def expert_node(state, persona_name: str, persona_prompt: str):
-    """Nœud générique pour exécuter l'analyse d'un expert spécifique."""
+    """Nœud générique pour l'analyse par un expert."""
     history = state.get("messages", [])
     lang = state.get("language", "english")
     
@@ -67,13 +69,13 @@ def expert_node(state, persona_name: str, persona_prompt: str):
     response = llm.invoke(prompt)
 
     return {
-        "expert_reviews": {
-            persona_name: str(response.content)
+        "expert_scores": {
+            persona_name: {"analysis": str(response.content)}
         }
     }
 
 # -------------------------------------------------------------------
-# FONCTIONS NŒUDS EXPORTÉES POUR GRAPH_LOGIC.PY
+# EXPORTS
 # -------------------------------------------------------------------
 
 def expert_comical_node(state):

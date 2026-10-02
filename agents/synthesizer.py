@@ -4,62 +4,63 @@ from dotenv import load_dotenv
 from langchain_groq import ChatGroq
 from pydantic import SecretStr
 
-# Charge les variables d'environnement locales (.env)
 load_dotenv()
 
-def get_synthesizer_llm():
-    """Récupère proprement la clé API Groq et initialise ChatGroq."""
-    api_key = None
+def get_groq_api_key():
+    try:
+        if hasattr(st, "secrets") and "GROQ_API_KEY" in st.secrets:
+            return str(st.secrets["GROQ_API_KEY"]).strip()
+    except Exception:
+        pass
     
-    # 1. Vérification dans Streamlit Secrets
-    if hasattr(st, "secrets") and "GROQ_API_KEY" in st.secrets:
-        api_key = st.secrets["GROQ_API_KEY"]
-    # 2. Fallback sur les variables d'environnement (.env)
-    else:
-        api_key = os.environ.get("GROQ_API_KEY")
+    api_key = os.getenv("GROQ_API_KEY")
+    if api_key:
+        return str(api_key).strip()
+        
+    raise ValueError(
+        "GROQ_API_KEY est introuvable ! "
+        "Ajoutez la clé dans Secrets sur Streamlit Cloud ou dans votre fichier .env local."
+    )
 
-    # 3. Validation
-    if not api_key:
-        raise ValueError(
-            "GROQ_API_KEY est introuvable ! "
-            "Vérifiez vos secrets Streamlit Cloud ou votre fichier .env local."
-        )
-
-    clean_api_key = str(api_key).strip()
+def get_synthesizer_llm():
+    clean_api_key = get_groq_api_key()
     os.environ["GROQ_API_KEY"] = clean_api_key
 
     return ChatGroq(
         model="mixtral-8x7b-32768",
-        temperature=0.7,
+        temperature=0.5,
         api_key=SecretStr(clean_api_key)
     )
 
 def synthesizer_node(state):
-    lang = state.get("language", "french")
-    scores = state.get("expert_scores", {})
+    """Synthétise les retours de tous les experts en un portrait final."""
+    expert_scores = state.get("expert_scores", {})
+    lang = state.get("language", "english")
     
     llm = get_synthesizer_llm()
     
-    title_example = {
-        "french": "Start with a funny archetype title in French using Markdown headers (e.g., '# Archétype: LE CLOWN DE LA MATRICE').",
-        "english": "Start with a funny archetype title in English using Markdown headers (e.g., '# Archetype: THE CLOWN OF THE MATRIX').",
-        "arabic": "Start with a funny archetype title in Arabic using Markdown headers (e.g., '# النمط: مهرج الماتريكس')."
-    }
-    
+    reviews_summary = ""
+    for expert, data in expert_scores.items():
+        analysis = data.get("analysis", "") if isinstance(data, dict) else str(data)
+        reviews_summary += f"--- {expert.upper()} EXPERT ---\n{analysis}\n\n"
+
     lang_instructions = {
-        "french": "Write a brutal, hilarious, and accurate psychological evaluation ('Roast') of this person entirely in FRENCH.",
-        "english": "Write a brutal, hilarious, and accurate psychological evaluation ('Roast') of this person entirely in ENGLISH.",
-        "arabic": "Write a brutal, hilarious, and accurate psychological evaluation ('Roast') of this person entirely in ARABIC."
+        "french": "Rédige le portrait final entièrement en FRANÇAIS. Sois élégant, structuré et perspicace.",
+        "english": "Write the final portrait entirely in ENGLISH. Make it structured, elegant, and insightful.",
+        "arabic": "اكتب التقرير النهائي باللغة العربية الفصحى. اجعله منظماً وأنيقاً ومبصراً."
     }
-    
-    selected_title = title_example.get(lang, title_example["french"])
-    selected_lang_instr = lang_instructions.get(lang, lang_instructions["french"])
-    
-    prompt = (
-        f"You are the 'Grand Synthesizer'. Based on these scores: {scores},\n"
-        f"{selected_lang_instr}\n"
-        f"{selected_title}"
+
+    selected_instr = lang_instructions.get(lang, lang_instructions["english"])
+
+    system_prompt = (
+        "You are the Master Synthesizer of an AI Personality Scanner.\n"
+        "Your job is to read all the expert evaluations and create a cohesive, striking, and comprehensive final personality portrait of the user.\n\n"
+        f"EXPERT EVALUATIONS:\n{reviews_summary}\n\n"
+        f"INSTRUCTION: {selected_instr}"
     )
-    
-    response = llm.invoke(prompt)
-    return {"final_portrait": str(response.content)}
+
+    response = llm.invoke([("system", system_prompt)])
+
+    return {
+        "final_portrait": str(response.content)
+    }
